@@ -120,13 +120,18 @@ export function BrandGuidelines({ data, onUpdate, onClearCache, memories, dos, d
     downloadFile("brand-guidelines.md", content);
   };
 
-  const handleDownloadMemory = (type: string) => {
-    const items = memories.filter((m) => m.type === type);
-    const label = type.charAt(0).toUpperCase() + type.slice(1);
-    const content = items.length > 0
-      ? items.map((m) => `- ${m.content}`).join("\n\n")
-      : "No memories yet.";
-    downloadFile(`${type}-memory.md`, `# ${label} Memory\n\n${content}`);
+  const handleDownloadMemory = () => {
+    const grouped: Record<string, typeof memories> = {};
+    memories.forEach((m) => {
+      if (!grouped[m.type]) grouped[m.type] = [];
+      grouped[m.type].push(m);
+    });
+    const sections = Object.entries(grouped).map(([type, items]) => {
+      const label = type.charAt(0).toUpperCase() + type.slice(1);
+      return `## ${label}\n\n${items.map((m) => `- ${m.content}`).join("\n\n")}`;
+    });
+    const content = sections.length > 0 ? sections.join("\n\n") : "No memories yet.";
+    downloadFile("memory.md", `# Memory\n\n${content}`);
   };
 
   const handleDownloadGuardrails = () => {
@@ -176,13 +181,9 @@ export function BrandGuidelines({ data, onUpdate, onClearCache, memories, dos, d
               <Download className="size-3" />
               Brand
             </Button>
-            <Button variant="outline" size="sm" className="gap-2" onClick={() => handleDownloadMemory("general")}>
+            <Button variant="outline" size="sm" className="gap-2" onClick={handleDownloadMemory}>
               <Download className="size-3" />
-              General
-            </Button>
-            <Button variant="outline" size="sm" className="gap-2" onClick={() => handleDownloadMemory("concierge")}>
-              <Download className="size-3" />
-              Concierge
+              Memory
             </Button>
             <Button variant="outline" size="sm" className="gap-2" onClick={handleDownloadGuardrails}>
               <Download className="size-3" />
@@ -349,7 +350,7 @@ export function BrandGuidelines({ data, onUpdate, onClearCache, memories, dos, d
         </Card>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div>
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">

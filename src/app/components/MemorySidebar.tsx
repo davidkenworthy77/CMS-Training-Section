@@ -44,19 +44,22 @@ export function MemorySidebar({ memories, onDeleteMemory }: MemorySidebarProps) 
     return matchesSearch && matchesType;
   });
 
-  const handleDownload = (type: string) => {
-    const items = memories.filter((m) => m.type === type);
-    const content = items
-      .map((m) => `- ${m.content}`)
-      .join("\n\n");
-    const blob = new Blob(
-      [`# ${type.charAt(0).toUpperCase() + type.slice(1)} Memory\n\n${content}`],
-      { type: "text/markdown" }
-    );
+  const handleDownload = () => {
+    const grouped: Record<string, typeof memories> = {};
+    memories.forEach((m) => {
+      if (!grouped[m.type]) grouped[m.type] = [];
+      grouped[m.type].push(m);
+    });
+    const sections = Object.entries(grouped).map(([type, items]) => {
+      const label = type.charAt(0).toUpperCase() + type.slice(1);
+      return `## ${label}\n\n${items.map((m) => `- ${m.content}`).join("\n\n")}`;
+    });
+    const content = sections.length > 0 ? sections.join("\n\n") : "No memories yet.";
+    const blob = new Blob([`# Memory\n\n${content}`], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${type}-memory.md`;
+    a.download = "memory.md";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -90,26 +93,15 @@ export function MemorySidebar({ memories, onDeleteMemory }: MemorySidebarProps) 
             <SelectItem value="concierge">Concierge</SelectItem>
           </SelectContent>
         </Select>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1 gap-2 text-xs"
-            onClick={() => handleDownload("general")}
-          >
-            <Download className="size-3" />
-            General
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1 gap-2 text-xs"
-            onClick={() => handleDownload("concierge")}
-          >
-            <Download className="size-3" />
-            Concierge
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full gap-2 text-xs"
+          onClick={handleDownload}
+        >
+          <Download className="size-3" />
+          Memory
+        </Button>
       </div>
 
       <ScrollArea className="flex-1">
