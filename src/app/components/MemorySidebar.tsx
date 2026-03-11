@@ -2,15 +2,8 @@ import { useState } from "react";
 import { ScrollArea } from "./ui/scroll-area";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
-import { Search, Trash2, Database, Download } from "lucide-react";
+import { Database, Download, Upload, FileText, X, Plus, ChevronDown, ChevronRight, Pencil } from "lucide-react";
+import { MemoryModal } from "./MemoryModal";
 
 interface Memory {
   id: string;
@@ -19,30 +12,48 @@ interface Memory {
   createdAt: Date;
 }
 
-interface MemorySidebarProps {
-  memories: Memory[];
-  onDeleteMemory: (id: string) => void;
+interface MemoryFile {
+  id: string;
+  name: string;
+  size: number;
+  uploadedAt: Date;
 }
 
-const typeColors: Record<string, string> = {
-  general: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
-  concierge: "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300",
-  brand: "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300",
-  technical: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
-  content: "bg-pink-100 text-pink-800 dark:bg-pink-950 dark:text-pink-300",
-};
+interface MemorySidebarProps {
+  memories: Memory[];
+  onSaveAllMemories: (text: string) => void;
+  memoryFiles: MemoryFile[];
+  onAddMemoryFiles: (files: FileList) => void;
+  onRemoveMemoryFile: (id: string) => void;
+  memoryDescription: string;
+  onUpdateMemoryDescription: (value: string) => void;
+}
 
-export function MemorySidebar({ memories, onDeleteMemory }: MemorySidebarProps) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterType, setFilterType] = useState("all");
-
-  const filteredMemories = memories.filter((memory) => {
-    const matchesSearch = memory.content
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
-    const matchesType = filterType === "all" || memory.type === filterType;
-    return matchesSearch && matchesType;
+export function MemorySidebar({
+  memories,
+  onSaveAllMemories,
+  memoryFiles,
+  onAddMemoryFiles,
+  onRemoveMemoryFile,
+  memoryDescription,
+  onUpdateMemoryDescription,
+}: MemorySidebarProps) {
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    memory: true,
+    files: true,
   });
+  const [memoryModalOpen, setMemoryModalOpen] = useState(false);
+
+  const toggleSection = (section: string) => {
+    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+    onAddMemoryFiles(files);
+    event.target.value = "";
+  };
 
   const handleDownload = () => {
     const grouped: Record<string, typeof memories> = {};
@@ -65,85 +76,167 @@ export function MemorySidebar({ memories, onDeleteMemory }: MemorySidebarProps) 
   };
 
   return (
-    <div className="h-full flex flex-col bg-muted/30 border-l">
-      <div className="p-4 border-b space-y-3">
-        <h2 className="font-semibold flex items-center gap-2">
-          <Database className="size-4" />
-          Memory Bank
-          <Badge variant="secondary" className="ml-auto">
-            {memories.length}
-          </Badge>
-        </h2>
-        <div className="relative">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3 text-muted-foreground" />
-          <Input
-            placeholder="Search..."
-            className="pl-7 h-8 text-sm"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <Select value={filterType} onValueChange={setFilterType}>
-          <SelectTrigger className="h-8 text-sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="general">General</SelectItem>
-            <SelectItem value="concierge">Concierge</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full gap-2 text-xs"
-          onClick={handleDownload}
-        >
-          <Download className="size-3" />
-          Memory
-        </Button>
-      </div>
+    <div className="h-full flex flex-col bg-muted/30">
+      <MemoryModal
+        open={memoryModalOpen}
+        onClose={() => setMemoryModalOpen(false)}
+        memories={memories}
+        onSaveAll={onSaveAllMemories}
+        memoryDescription={memoryDescription}
+        onUpdateMemoryDescription={onUpdateMemoryDescription}
+      />
 
       <ScrollArea className="flex-1">
-        <div className="p-4 space-y-3">
-          {filteredMemories.length === 0 ? (
-            <div className="text-center py-8">
-              <Database className="size-8 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                {searchQuery || filterType !== "all"
-                  ? "No matching memories"
-                  : "No memories yet"}
-              </p>
-            </div>
-          ) : (
-            filteredMemories.map((memory) => (
-              <div
-                key={memory.id}
-                className="p-3 rounded-lg bg-background border space-y-2 group hover:shadow-sm transition-shadow"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <Badge
-                    variant="secondary"
-                    className={typeColors[memory.type] || ""}
-                  >
-                    {memory.type}
-                  </Badge>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-6"
-                    onClick={() => onDeleteMemory(memory.id)}
-                  >
-                    <Trash2 className="size-3 text-destructive" />
-                  </Button>
-                </div>
-                <p className="text-sm line-clamp-4">{memory.content}</p>
-                <span className="text-xs text-muted-foreground block">
-                  {memory.createdAt.toLocaleDateString()}
-                </span>
+        <div className="p-4 space-y-1">
+          {/* Memory Section */}
+          <div className="rounded-lg border bg-background">
+            <button
+              className="w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors rounded-t-lg"
+              onClick={() => toggleSection("memory")}
+            >
+              <div className="flex items-center gap-2">
+                <Database className="size-4 text-muted-foreground" />
+                <span className="text-sm font-semibold">Memory</span>
               </div>
-            ))
-          )}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-6"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMemoryModalOpen(true);
+                  }}
+                >
+                  <Pencil className="size-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-6"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDownload();
+                  }}
+                >
+                  <Download className="size-3" />
+                </Button>
+                {expandedSections.memory ? (
+                  <ChevronDown className="size-4 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="size-4 text-muted-foreground" />
+                )}
+              </div>
+            </button>
+            {expandedSections.memory && (
+              <div className="px-3 pb-3 space-y-2">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {memoryDescription || "No description set. Click the pencil to add one."}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  {memories.length} {memories.length === 1 ? "entry" : "entries"} stored
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Files Section */}
+          <div className="rounded-lg border bg-background">
+            <button
+              className="w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors"
+              onClick={() => toggleSection("files")}
+            >
+              <div className="flex items-center gap-2">
+                <FileText className="size-4 text-muted-foreground" />
+                <span className="text-sm font-semibold">Files</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-6"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    document.getElementById("memoryFileUpload")?.click();
+                  }}
+                >
+                  <Plus className="size-3" />
+                </Button>
+                {expandedSections.files ? (
+                  <ChevronDown className="size-4 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="size-4 text-muted-foreground" />
+                )}
+              </div>
+            </button>
+            <input
+              type="file"
+              id="memoryFileUpload"
+              multiple
+              onChange={handleFileUpload}
+              className="hidden"
+              accept=".pdf,.doc,.docx,.txt,.md,.csv"
+            />
+            {expandedSections.files && (
+              <div className="px-3 pb-3 space-y-3">
+                {memoryFiles.length === 0 ? (
+                  <div
+                    className="text-center py-6 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/30 transition-colors"
+                    onClick={() => document.getElementById("memoryFileUpload")?.click()}
+                  >
+                    <Upload className="size-6 mx-auto mb-1.5 text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground">
+                      Click to upload files
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-3 gap-2">
+                      {memoryFiles.map((file) => {
+                        const ext = file.name.split(".").pop()?.toUpperCase() || "FILE";
+                        return (
+                          <div
+                            key={file.id}
+                            className="relative group rounded-lg border bg-muted/30 p-2 flex flex-col items-center gap-1.5 hover:shadow-sm transition-shadow"
+                          >
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="absolute -top-1 -right-1 size-5 bg-background border shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => onRemoveMemoryFile(file.id)}
+                            >
+                              <X className="size-2.5 text-destructive" />
+                            </Button>
+                            <div className="w-full aspect-[4/3] rounded bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center border">
+                              <Badge variant="secondary" className="text-[9px] px-1.5 py-0">
+                                {ext}
+                              </Badge>
+                            </div>
+                            <p className="text-[10px] font-medium text-center leading-tight line-clamp-2 w-full">
+                              {file.name}
+                            </p>
+                          </div>
+                        );
+                      })}
+                      <div
+                        className="rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer hover:bg-muted/30 transition-colors min-h-[80px]"
+                        onClick={() => document.getElementById("memoryFileUpload")?.click()}
+                      >
+                        <Plus className="size-4 text-muted-foreground" />
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      {memoryFiles.length} {memoryFiles.length === 1 ? "file" : "files"} · {
+                        memoryFiles.reduce((acc, f) => acc + f.size, 0) > 1024 * 1024
+                          ? (memoryFiles.reduce((acc, f) => acc + f.size, 0) / (1024 * 1024)).toFixed(1) + " MB"
+                          : (memoryFiles.reduce((acc, f) => acc + f.size, 0) / 1024).toFixed(1) + " KB"
+                      } total
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </ScrollArea>
     </div>

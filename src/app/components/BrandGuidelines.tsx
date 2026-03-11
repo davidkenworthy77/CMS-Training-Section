@@ -10,7 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
-import { RefreshCw, Upload, X, FileText, Download } from "lucide-react";
+import { RefreshCw, Upload, X, FileText, Eye } from "lucide-react";
+import { BrandGuidelinesModal } from "./BrandGuidelinesModal";
 
 interface UploadedFile {
   id: string;
@@ -58,6 +59,7 @@ interface BrandGuidelinesProps {
 
 export function BrandGuidelines({ data, onUpdate, onClearCache, memories, dos, donts, priorityRules }: BrandGuidelinesProps) {
   const [formData, setFormData] = useState<BrandGuidelinesData>(data);
+  const [guidelinesModalOpen, setGuidelinesModalOpen] = useState(false);
 
   const handleChange = (field: keyof BrandGuidelinesData, value: string) => {
     const updated = { ...formData, [field]: value };
@@ -93,63 +95,6 @@ export function BrandGuidelines({ data, onUpdate, onClearCache, memories, dos, d
     onUpdate(updated);
   };
 
-  const downloadFile = (filename: string, content: string) => {
-    const blob = new Blob([content], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleDownloadBrand = () => {
-    const content = [
-      "# Brand Guidelines",
-      "",
-      `## Tone of Voice\n${formData.toneOfVoice}`,
-      "",
-      `## Writing Style\n${formData.writingStyle}`,
-      "",
-      `## Search Strategy\n${formData.searchStrategy}`,
-      "",
-      `## Brand Voice Description\n${formData.brandVoiceDescription}`,
-      "",
-      `## Target Audience\n${formData.targetAudience}`,
-    ].join("\n");
-    downloadFile("brand-guidelines.md", content);
-  };
-
-  const handleDownloadMemory = () => {
-    const grouped: Record<string, typeof memories> = {};
-    memories.forEach((m) => {
-      if (!grouped[m.type]) grouped[m.type] = [];
-      grouped[m.type].push(m);
-    });
-    const sections = Object.entries(grouped).map(([type, items]) => {
-      const label = type.charAt(0).toUpperCase() + type.slice(1);
-      return `## ${label}\n\n${items.map((m) => `- ${m.content}`).join("\n\n")}`;
-    });
-    const content = sections.length > 0 ? sections.join("\n\n") : "No memories yet.";
-    downloadFile("memory.md", `# Memory\n\n${content}`);
-  };
-
-  const handleDownloadGuardrails = () => {
-    const sections = [
-      "# Guardrails",
-      "",
-      "## Priority Rules",
-      ...priorityRules.map((r) => `- ${r.text}`),
-      "",
-      "## Do's",
-      ...dos.map((d) => `- ${d.text}`),
-      "",
-      "## Don'ts",
-      ...donts.map((d) => `- ${d.text}`),
-    ].join("\n");
-    downloadFile("guardrails.md", sections);
-  };
-
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return bytes + " B";
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
@@ -158,6 +103,16 @@ export function BrandGuidelines({ data, onUpdate, onClearCache, memories, dos, d
 
   return (
     <div className="space-y-6">
+      <BrandGuidelinesModal
+        open={guidelinesModalOpen}
+        onClose={() => setGuidelinesModalOpen(false)}
+        brand={formData}
+        memories={memories}
+        dos={dos}
+        donts={donts}
+        priorityRules={priorityRules}
+      />
+
       <div className="flex items-start justify-between">
         <div>
           <h2 className="text-2xl mb-1">Brand Guidelines</h2>
@@ -174,22 +129,12 @@ export function BrandGuidelines({ data, onUpdate, onClearCache, memories, dos, d
             Clear Concierge Cache
           </Button>
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <span className="text-sm font-medium text-muted-foreground">Download Memory Files</span>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="gap-2" onClick={handleDownloadBrand}>
-              <Download className="size-3" />
-              Brand
-            </Button>
-            <Button variant="outline" size="sm" className="gap-2" onClick={handleDownloadMemory}>
-              <Download className="size-3" />
-              Memory
-            </Button>
-            <Button variant="outline" size="sm" className="gap-2" onClick={handleDownloadGuardrails}>
-              <Download className="size-3" />
-              Guardrails
-            </Button>
-          </div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium">Brand Memory</span>
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => setGuidelinesModalOpen(true)}>
+            <Eye className="size-3" />
+            View
+          </Button>
         </div>
       </div>
 
